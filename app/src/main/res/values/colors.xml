@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors - Blue (Trust, Government) -->
+    <color name="primary">#1565C0</color>
+    <color name="primary_light">#5E92F3</color>
+    <color name="primary_dark">#003C8F</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- Secondary Colors - Gold (Achievement, Success) -->
+    <color name="secondary">#FFB300</color>
+    <color name="secondary_light">#FFE54C</color>
+    <color name="secondary_dark">#C68400</color>
+    <color name="on_secondary">#000000</color>
+
+    <!-- Category Colors -->
+    <color name="twk_color">#2196F3</color>
+    <color name="tiu_color">#4CAF50</color>
+    <color name="tkp_color">#FF9800</color>
+    <color name="skb_color">#9C27B0</color>
+
+    <!-- Status Colors -->
+    <color name="success">#4CAF50</color>
+    <color name="error">#F44336</color>
+    <color name="warning">#FF9800</color>
+    <color name="info">#2196F3</color>
+
+    <!-- Quiz Status -->
+    <color name="answered">#4CAF50</color>
+    <color name="unanswered">#F44336</color>
+    <color name="marked">#FF9800</color>
+    <color name="current">#1565C0</color>
+
+    <!-- Background -->
+    <color name="background">#FAFAFA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_background">#1C1B1F</color>
+    <color name="on_surface">#1C1B1F</color>
+</resources>

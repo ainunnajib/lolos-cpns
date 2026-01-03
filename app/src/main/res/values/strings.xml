@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lolos CPNS</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Beranda</string>
+    <string name="nav_materi">Materi</string>
+    <string name="nav_tryout">Try Out</string>
+    <string name="nav_stats">Statistik</string>
+    <string name="nav_profile">Profil</string>
+
+    <!-- Home Screen -->
+    <string name="greeting">Halo, %1$s!</string>
+    <string name="days_remaining">CPNS 2025 tinggal %1$d hari</string>
+    <string name="progress_label">Progress Belajar</string>
+    <string name="questions_completed">%1$d soal dikerjakan</string>
+    <string name="start_tryout">Mulai Try Out</string>
+    <string name="ask_ai">Tanya AI Tutor</string>
+
+    <!-- Categories -->
+    <string name="twk">TWK</string>
+    <string name="twk_full">Tes Wawasan Kebangsaan</string>
+    <string name="tiu">TIU</string>
+    <string name="tiu_full">Tes Intelegensi Umum</string>
+    <string name="tkp">TKP</string>
+    <string name="tkp_full">Tes Karakteristik Pribadi</string>
+    <string name="skb">SKB</string>
+    <string name="skb_full">Seleksi Kompetensi Bidang</string>
+
+    <!-- Quiz -->
+    <string name="question_number">Soal %1$d dari %2$d</string>
+    <string name="time_remaining">Sisa waktu: %1$s</string>
+    <string name="next_question">Selanjutnya</string>
+    <string name="prev_question">Sebelumnya</string>
+    <string name="skip_question">Lewati</string>
+    <string name="finish_quiz">Selesai</string>
+    <string name="mark_for_review">Tandai Ragu</string>
+
+    <!-- Result -->
+    <string name="result_title">Hasil Try Out</string>
+    <string name="your_score">Skor Anda</string>
+    <string name="passing_grade">Passing Grade</string>
+    <string name="status_passed">LULUS</string>
+    <string name="status_failed">BELUM LULUS</string>
+    <string name="review_answers">Lihat Pembahasan</string>
+    <string name="try_again">Coba Lagi</string>
+    <string name="back_to_home">Kembali ke Beranda</string>
+
+    <!-- AI Tutor -->
+    <string name="ai_tutor">AI Tutor</string>
+    <string name="ai_placeholder">Ketik pertanyaan Anda...</string>
+    <string name="ai_thinking">Sedang berpikir...</string>
+
+    <!-- Premium -->
+    <string name="upgrade_premium">Upgrade Premium</string>
+    <string name="premium_features">Fitur Premium</string>
+    <string name="free_trial">Coba Gratis 7 Hari</string>
+</resources>
