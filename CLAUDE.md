@@ -187,10 +187,33 @@ tes-cpns/
 └── CLAUDE.md                   # This file
 ```
 
-## Completed Tasks (3 Jan 2026)
+## Development History
+
+### 4 January 2026 - Session Recap & Beads Integration
+- Fixed privacy policy 404 error in Play Console (marked as fixed, re-validated)
+- Documented full app details in CLAUDE.md
+- Created new GitHub repo: https://github.com/ainunnajib/lolos-cpns
+- Pushed complete source code (87 files, 12k+ lines)
+- Initialized Beads task tracking system
+- Commits: f3f5020, bcc9585, ca39964
+
+### 3 January 2026 - Initial Release & Play Store Submission
+- Created Android app with CPNS exam features (TWK, TIU, TKP)
+- Implemented face detection for exam proctoring using MediaPipe
+- Added 500+ practice questions across all categories
+- Built signed release AAB
+- Created privacy policy and hosted on GitHub Pages
+- Generated store graphics (icon, feature graphic, 4 screenshots)
+- Completed all Play Console declarations
+- Uploaded AAB to Production track (Indonesia)
+- Submitted for Google review
+- Commit: 63a4b31
+
+## Completed Tasks
 
 - [x] Create Android app with CPNS exam features
 - [x] Implement face detection for exam proctoring
+- [x] Add 500+ CPNS questions (TWK, TIU, TKP)
 - [x] Build signed release AAB
 - [x] Create privacy policy and host on GitHub Pages
 - [x] Generate store graphics (icon, feature graphic, screenshots)
@@ -198,13 +221,18 @@ tes-cpns/
 - [x] Upload AAB to Production track
 - [x] Select Indonesia as target country
 - [x] Submit for Google review
+- [x] Fix privacy policy 404 error
+- [x] Push source code to GitHub
+- [x] Initialize Beads task tracking
 
 ## Pending
 
 - [ ] Wait for Google review approval (1-7 days for new apps)
 - [ ] Publish app when approved
+- [ ] Move keystore credentials to local.properties (security)
 - [ ] Add tablet screenshots (optional)
 - [ ] Create promotional video (optional)
+- [ ] Document AI model download mechanism
 
 ## Notes
 
@@ -213,6 +241,11 @@ tes-cpns/
 - All data stored locally on device
 - Camera used only for face detection, not recorded
 
+## GitHub Repository
+
+- **Main App**: https://github.com/ainunnajib/lolos-cpns
+- **Privacy Policy**: https://github.com/ainunnajib/lolos-cpns-privacy
+
 ---
 
-Last updated: 3 January 2026
+Last updated: 4 January 2026
