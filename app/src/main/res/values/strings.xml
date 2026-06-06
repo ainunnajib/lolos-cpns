@@ -55,4 +55,18 @@
     <string name="upgrade_premium">Upgrade Premium</string>
     <string name="premium_features">Fitur Premium</string>
     <string name="free_trial">Coba Gratis 7 Hari</string>
+
+    <!-- Camera Permission -->
+    <string name="camera_permission_title">Aktifkan Pengawasan Ujian</string>
+    <string name="camera_permission_denied_title">Izin Kamera Diperlukan</string>
+    <string name="camera_permission_rationale">Fitur deteksi wajah memerlukan akses kamera untuk:\n\n• Simulasi pengawasan ujian CAT\n• Memastikan fokus selama latihan\n• Persiapan menghadapi ujian sesungguhnya\n\nKamera hanya digunakan secara lokal dan tidak merekam atau menyimpan data.</string>
+    <string name="camera_permission_denied_message">Anda telah menolak izin kamera secara permanen. Untuk menggunakan fitur pengawasan ujian, silakan buka Pengaturan dan aktifkan izin kamera untuk aplikasi ini.</string>
+    <string name="camera_allow">Izinkan Kamera</string>
+    <string name="camera_open_settings">Buka Pengaturan</string>
+    <string name="camera_continue_without">Lanjut Tanpa Kamera</string>
+    <string name="camera_proctoring_title">Pengawasan Ujian</string>
+    <string name="camera_proctoring_enable">Aktifkan kamera untuk simulasi pengawasan</string>
+    <string name="camera_proctoring_denied">Izin kamera ditolak. Buka pengaturan untuk mengaktifkan.</string>
+    <string name="camera_activate">Aktifkan</string>
+    <string name="camera_settings">Pengaturan</string>
 </resources>

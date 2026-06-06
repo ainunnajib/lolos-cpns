@@ -1,8 +1,12 @@
 package com.cpns.lolos.presentation.screens.quiz
 
+import android.graphics.Bitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cpns.lolos.data.facedetection.FaceDetectionResult
+import com.cpns.lolos.data.facedetection.FaceDetectionService
+import com.cpns.lolos.data.facedetection.FaceStatus
 import com.cpns.lolos.domain.model.Question
 import com.cpns.lolos.domain.model.QuestionCategory
 import com.cpns.lolos.domain.model.QuizSession
@@ -19,6 +23,29 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Proctoring state for exam monitoring
+ */
+data class ProctoringState(
+    val isEnabled: Boolean = false,
+    val hasCameraPermission: Boolean = false,
+    val faceDetectionResult: FaceDetectionResult? = null,
+    val warningCount: Int = 0,
+    val lastWarningTime: Long = 0,
+    val totalNoFaceTime: Int = 0  // seconds without face detected
+) {
+    val isWarning: Boolean
+        get() = faceDetectionResult?.status != FaceStatus.SINGLE_FACE &&
+                faceDetectionResult?.status != FaceStatus.INITIALIZING
+
+    val warningMessage: String?
+        get() = when (faceDetectionResult?.status) {
+            FaceStatus.NO_FACE -> "Wajah tidak terdeteksi"
+            FaceStatus.MULTIPLE_FACES -> "Terdeteksi lebih dari satu wajah"
+            else -> null
+        }
+}
+
 data class QuizUiState(
     val session: QuizSession? = null,
     val currentQuestionIndex: Int = 0,
@@ -29,7 +56,8 @@ data class QuizUiState(
     val markedQuestions: Set<Int> = emptySet(),
     val isLoading: Boolean = true,
     val isFinished: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val proctoring: ProctoringState = ProctoringState()
 ) {
     val currentQuestion: Question?
         get() = session?.questions?.getOrNull(currentQuestionIndex)
@@ -52,7 +80,8 @@ data class QuizUiState(
 class QuizViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val quizRepository: QuizRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val faceDetectionService: FaceDetectionService
 ) : ViewModel() {
 
     private val sessionId: String = checkNotNull(savedStateHandle["sessionId"])
@@ -61,10 +90,115 @@ class QuizViewModel @Inject constructor(
     val uiState: StateFlow<QuizUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
+    private var proctoringJob: Job? = null
     private var questionStartTime: Long = 0
+    private var frameCounter: Int = 0
 
     init {
         loadSession()
+    }
+
+    // ==================== Proctoring Functions ====================
+
+    /**
+     * Enable proctoring with camera permission granted
+     */
+    fun enableProctoring() {
+        viewModelScope.launch {
+            faceDetectionService.initialize()
+            faceDetectionService.start()
+
+            _uiState.update {
+                it.copy(
+                    proctoring = it.proctoring.copy(
+                        isEnabled = true,
+                        hasCameraPermission = true
+                    )
+                )
+            }
+
+            // Start monitoring face detection state
+            startProctoringMonitor()
+        }
+    }
+
+    /**
+     * Disable proctoring
+     */
+    fun disableProctoring() {
+        proctoringJob?.cancel()
+        faceDetectionService.stop()
+
+        _uiState.update {
+            it.copy(
+                proctoring = ProctoringState(isEnabled = false)
+            )
+        }
+    }
+
+    /**
+     * Process a camera frame for face detection
+     */
+    fun processFrame(bitmap: Bitmap) {
+        if (!_uiState.value.proctoring.isEnabled) return
+
+        // Process every 5th frame to reduce CPU load
+        frameCounter++
+        if (frameCounter % 5 != 0) return
+
+        viewModelScope.launch {
+            val result = faceDetectionService.detectFaces(bitmap)
+            _uiState.update {
+                it.copy(
+                    proctoring = it.proctoring.copy(
+                        faceDetectionResult = result
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Monitor proctoring state and update warnings
+     */
+    private fun startProctoringMonitor() {
+        proctoringJob?.cancel()
+        proctoringJob = viewModelScope.launch {
+            while (_uiState.value.proctoring.isEnabled) {
+                delay(1000) // Check every second
+
+                val currentState = _uiState.value.proctoring
+                val faceResult = currentState.faceDetectionResult
+
+                if (faceResult?.status == FaceStatus.NO_FACE ||
+                    faceResult?.status == FaceStatus.MULTIPLE_FACES) {
+                    // Increment warning counters
+                    val now = System.currentTimeMillis()
+                    val shouldWarn = now - currentState.lastWarningTime > 5000 // Warn every 5 seconds
+
+                    _uiState.update {
+                        it.copy(
+                            proctoring = it.proctoring.copy(
+                                totalNoFaceTime = currentState.totalNoFaceTime + 1,
+                                warningCount = if (shouldWarn) currentState.warningCount + 1 else currentState.warningCount,
+                                lastWarningTime = if (shouldWarn) now else currentState.lastWarningTime
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Update camera permission state
+     */
+    fun setCameraPermission(granted: Boolean) {
+        _uiState.update {
+            it.copy(
+                proctoring = it.proctoring.copy(hasCameraPermission = granted)
+            )
+        }
     }
 
     private fun loadSession() {
@@ -220,5 +354,7 @@ class QuizViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         timerJob?.cancel()
+        proctoringJob?.cancel()
+        faceDetectionService.release()
     }
 }

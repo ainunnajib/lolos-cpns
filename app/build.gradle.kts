@@ -110,6 +110,15 @@ dependencies {
     // MediaPipe LLM - On-device AI
     implementation(libs.mediapipe.llm)
 
+    // MediaPipe Vision - Face Detection
+    implementation(libs.mediapipe.vision)
+
+    // CameraX - Camera Preview
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

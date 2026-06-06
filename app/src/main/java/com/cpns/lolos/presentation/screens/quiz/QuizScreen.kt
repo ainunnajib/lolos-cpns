@@ -1,5 +1,6 @@
 package com.cpns.lolos.presentation.screens.quiz
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,46 +19,87 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.cpns.lolos.data.facedetection.FaceStatus
+import com.cpns.lolos.presentation.components.CameraPermissionBanner
+import com.cpns.lolos.presentation.components.CameraPermissionDialog
+import com.cpns.lolos.presentation.components.CompactCameraPreview
 import com.cpns.lolos.presentation.theme.*
-import kotlinx.coroutines.delay
+import com.cpns.lolos.util.hasCameraPermission
+import com.cpns.lolos.util.rememberCameraPermissionState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizScreen(
     sessionId: String,
     onFinish: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: QuizViewModel = hiltViewModel()
 ) {
-    // TODO: Get from ViewModel
-    var currentQuestionIndex by remember { mutableIntStateOf(0) }
-    var selectedAnswer by remember { mutableStateOf<Int?>(null) }
-    var isMarkedForReview by remember { mutableStateOf(false) }
-    var remainingTimeSeconds by remember { mutableIntStateOf(100 * 60) } // 100 minutes
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
     var showExitDialog by remember { mutableStateOf(false) }
     var showFinishDialog by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
-    // Mock data - replace with real data from ViewModel
-    val totalQuestions = 110
-    val answeredQuestions = remember { mutableStateListOf<Int>() }
-    val markedQuestions = remember { mutableStateListOf<Int>() }
-
-    // Timer
-    LaunchedEffect(Unit) {
-        while (remainingTimeSeconds > 0) {
-            delay(1000)
-            remainingTimeSeconds--
+    // Camera permission state
+    val (permissionState, requestPermission) = rememberCameraPermissionState { granted ->
+        if (granted) {
+            viewModel.enableProctoring()
         }
-        // Auto finish when time's up
-        onFinish()
+        showPermissionDialog = false
     }
 
-    val timeString = remember(remainingTimeSeconds) {
-        val minutes = remainingTimeSeconds / 60
-        val seconds = remainingTimeSeconds % 60
-        String.format("%02d:%02d", minutes, seconds)
+    // Check initial permission on launch
+    LaunchedEffect(Unit) {
+        val hasPermission = context.hasCameraPermission()
+        viewModel.setCameraPermission(hasPermission)
+        if (!hasPermission && !uiState.proctoring.isEnabled) {
+            // Show permission prompt after a short delay
+            kotlinx.coroutines.delay(1000)
+            showPermissionDialog = true
+        } else if (hasPermission) {
+            viewModel.enableProctoring()
+        }
+    }
+
+    // Navigate to result when finished
+    LaunchedEffect(uiState.isFinished) {
+        if (uiState.isFinished) {
+            onFinish()
+        }
+    }
+
+    // Loading state
+    if (uiState.isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    // Error state
+    if (uiState.error != null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onBack) {
+                    Text("Kembali")
+                }
+            }
+        }
+        return
     }
 
     Scaffold(
@@ -71,12 +113,12 @@ fun QuizScreen(
                         Icon(
                             imageVector = Icons.Filled.AccessTime,
                             contentDescription = null,
-                            tint = if (remainingTimeSeconds < 300) Error else MaterialTheme.colorScheme.primary
+                            tint = if (uiState.isTimeWarning) Error else MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = timeString,
+                            text = uiState.timeString,
                             fontWeight = FontWeight.Bold,
-                            color = if (remainingTimeSeconds < 300) Error else MaterialTheme.colorScheme.onSurface
+                            color = if (uiState.isTimeWarning) Error else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -86,8 +128,24 @@ fun QuizScreen(
                     }
                 },
                 actions = {
+                    // Proctoring indicator
+                    if (uiState.proctoring.isEnabled) {
+                        val statusColor = when (uiState.proctoring.faceDetectionResult?.status) {
+                            FaceStatus.SINGLE_FACE -> Success
+                            FaceStatus.NO_FACE, FaceStatus.MULTIPLE_FACES -> Error
+                            else -> MaterialTheme.colorScheme.outline
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.Face,
+                            contentDescription = "Proctoring",
+                            tint = statusColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
                     Text(
-                        text = "${answeredQuestions.size}/$totalQuestions",
+                        text = "${uiState.answeredQuestions.size}/${uiState.totalQuestions}",
                         style = MaterialTheme.typography.labelLarge
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -95,156 +153,205 @@ fun QuizScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Question Navigator
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(totalQuestions) { index ->
-                    QuestionNavigatorItem(
-                        number = index + 1,
-                        isAnswered = answeredQuestions.contains(index),
-                        isMarked = markedQuestions.contains(index),
-                        isCurrent = currentQuestionIndex == index,
-                        onClick = { currentQuestionIndex = index }
-                    )
-                }
-            }
-
-            HorizontalDivider()
-
-            // Question Content
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                // Category Badge
-                Surface(
-                    color = TwkColor.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(4.dp)
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Proctoring warning banner
+                AnimatedVisibility(
+                    visible = uiState.proctoring.isWarning && uiState.proctoring.isEnabled,
+                    enter = slideInVertically() + fadeIn(),
+                    exit = slideOutVertically() + fadeOut()
                 ) {
-                    Text(
-                        text = "TWK - Pancasila",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TwkColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Question Number & Text
-                Text(
-                    text = "Soal ${currentQuestionIndex + 1}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Pancasila sebagai dasar negara Indonesia pertama kali diusulkan oleh Ir. Soekarno pada tanggal...",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Answer Options
-                val options = listOf(
-                    "A. 1 Juni 1945",
-                    "B. 17 Agustus 1945",
-                    "C. 18 Agustus 1945",
-                    "D. 22 Juni 1945",
-                    "E. 1 Oktober 1945"
-                )
-
-                options.forEachIndexed { index, option ->
-                    AnswerOption(
-                        text = option,
-                        isSelected = selectedAnswer == index,
-                        onClick = {
-                            selectedAnswer = index
-                            if (!answeredQuestions.contains(currentQuestionIndex)) {
-                                answeredQuestions.add(currentQuestionIndex)
-                            }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Error.copy(alpha = 0.9f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Warning,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = uiState.proctoring.warningMessage ?: "Peringatan",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
-            }
 
-            // Bottom Actions
-            Surface(
-                shadowElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Camera permission banner (if not enabled)
+                if (!uiState.proctoring.isEnabled && !uiState.proctoring.hasCameraPermission) {
+                    CameraPermissionBanner(
+                        onRequestPermission = { showPermissionDialog = true },
+                        isPermanentlyDenied = permissionState.isPermanentlyDenied,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                // Question Navigator
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Mark for review
-                    TextButton(
-                        onClick = {
-                            isMarkedForReview = !isMarkedForReview
-                            if (isMarkedForReview) {
-                                if (!markedQuestions.contains(currentQuestionIndex)) {
-                                    markedQuestions.add(currentQuestionIndex)
+                    items(uiState.totalQuestions) { index ->
+                        QuestionNavigatorItem(
+                            number = index + 1,
+                            isAnswered = uiState.answeredQuestions.contains(index),
+                            isMarked = uiState.markedQuestions.contains(index),
+                            isCurrent = uiState.currentQuestionIndex == index,
+                            onClick = { viewModel.goToQuestion(index) }
+                        )
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Question Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    val currentQuestion = uiState.currentQuestion
+
+                    if (currentQuestion != null) {
+                        // Category Badge
+                        Surface(
+                            color = when (currentQuestion.category.name) {
+                                "TWK" -> TwkColor.copy(alpha = 0.1f)
+                                "TIU" -> TiuColor.copy(alpha = 0.1f)
+                                "TKP" -> TkpColor.copy(alpha = 0.1f)
+                                else -> MaterialTheme.colorScheme.primaryContainer
+                            },
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "${currentQuestion.category.displayName} - ${currentQuestion.subCategory}",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = when (currentQuestion.category.name) {
+                                    "TWK" -> TwkColor
+                                    "TIU" -> TiuColor
+                                    "TKP" -> TkpColor
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Question Number & Text
+                        Text(
+                            text = "Soal ${uiState.currentQuestionIndex + 1}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = currentQuestion.questionText,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Answer Options
+                        currentQuestion.options.forEachIndexed { index, option ->
+                            AnswerOption(
+                                text = option,
+                                isSelected = uiState.selectedAnswer == index,
+                                onClick = { viewModel.selectAnswer(index) }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+
+                // Bottom Actions
+                Surface(shadowElevation = 8.dp) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Mark for review
+                        TextButton(onClick = { viewModel.toggleMarkForReview() }) {
+                            Icon(
+                                imageVector = if (uiState.isMarkedForReview) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                contentDescription = null,
+                                tint = if (uiState.isMarkedForReview) Warning else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (uiState.isMarkedForReview) "Ditandai" else "Tandai",
+                                color = if (uiState.isMarkedForReview) Warning else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (uiState.currentQuestionIndex > 0) {
+                                OutlinedButton(onClick = { viewModel.previousQuestion() }) {
+                                    Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Sebelumnya")
+                                }
+                            }
+
+                            if (uiState.currentQuestionIndex < uiState.totalQuestions - 1) {
+                                Button(onClick = { viewModel.nextQuestion() }) {
+                                    Text("Selanjutnya")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(Icons.Filled.ArrowForward, contentDescription = null)
                                 }
                             } else {
-                                markedQuestions.remove(currentQuestionIndex)
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (isMarkedForReview) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = null,
-                            tint = if (isMarkedForReview) Warning else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isMarkedForReview) "Ditandai" else "Tandai",
-                            color = if (isMarkedForReview) Warning else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (currentQuestionIndex > 0) {
-                            OutlinedButton(onClick = { currentQuestionIndex-- }) {
-                                Icon(Icons.Filled.ArrowBack, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Sebelumnya")
-                            }
-                        }
-
-                        if (currentQuestionIndex < totalQuestions - 1) {
-                            Button(onClick = { currentQuestionIndex++ }) {
-                                Text("Selanjutnya")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(Icons.Filled.ArrowForward, contentDescription = null)
-                            }
-                        } else {
-                            Button(
-                                onClick = { showFinishDialog = true },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Success
-                                )
-                            ) {
-                                Text("Selesai")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(Icons.Filled.Check, contentDescription = null)
+                                Button(
+                                    onClick = { showFinishDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Success)
+                                ) {
+                                    Text("Selesai")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(Icons.Filled.Check, contentDescription = null)
+                                }
                             }
                         }
                     }
                 }
             }
+
+            // Camera Preview (bottom-right corner)
+            if (uiState.proctoring.isEnabled) {
+                CompactCameraPreview(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 100.dp),
+                    onFaceDetected = { bitmap -> viewModel.processFrame(bitmap) },
+                    isEnabled = true,
+                    faceDetectionResult = uiState.proctoring.faceDetectionResult
+                )
+            }
         }
+    }
+
+    // Camera Permission Dialog
+    if (showPermissionDialog) {
+        CameraPermissionDialog(
+            onDismiss = { showPermissionDialog = false },
+            onRequestPermission = requestPermission,
+            isPermanentlyDenied = permissionState.isPermanentlyDenied,
+            onContinueWithoutCamera = { showPermissionDialog = false }
+        )
     }
 
     // Exit Dialog
@@ -258,6 +365,7 @@ fun QuizScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        viewModel.abandonQuiz()
                         showExitDialog = false
                         onBack()
                     },
@@ -281,20 +389,28 @@ fun QuizScreen(
             title = { Text("Selesaikan Try Out?") },
             text = {
                 Column {
-                    Text("Anda telah menjawab ${answeredQuestions.size} dari $totalQuestions soal.")
-                    if (answeredQuestions.size < totalQuestions) {
+                    Text("Anda telah menjawab ${uiState.answeredQuestions.size} dari ${uiState.totalQuestions} soal.")
+                    if (uiState.answeredQuestions.size < uiState.totalQuestions) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Masih ada ${totalQuestions - answeredQuestions.size} soal yang belum dijawab.",
+                            text = "Masih ada ${uiState.totalQuestions - uiState.answeredQuestions.size} soal yang belum dijawab.",
                             color = Warning
+                        )
+                    }
+                    if (uiState.proctoring.isEnabled && uiState.proctoring.warningCount > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Peringatan pengawasan: ${uiState.proctoring.warningCount}x",
+                            color = Error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = {
+                    viewModel.finishQuiz()
                     showFinishDialog = false
-                    onFinish()
                 }) {
                     Text("Selesai")
                 }

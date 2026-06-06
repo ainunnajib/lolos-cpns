@@ -14,7 +14,17 @@ object QuestionSeeder {
     private fun List<Int>.toJsonInt(): String = gson.toJson(this)
 
     fun getSampleQuestions(): List<QuestionEntity> {
-        return getTwkQuestions() + getTiuQuestions() + getTkpQuestions()
+        return getTwkQuestions() +
+               AdditionalTwkQuestions.getQuestions() +
+               getTiuQuestions() +
+               AdditionalTiuQuestions.getQuestions() +
+               getTkpQuestions() +
+               AdditionalTkpQuestions1.getQuestions() +
+               AdditionalTkpQuestions2.getQuestions() +
+               AdditionalTkpQuestions3.getQuestions() +
+               AdditionalTkpQuestions4.getQuestions() +
+               AdditionalTkpQuestions5.getQuestions() +
+               AdditionalTkpQuestions6.getQuestions()
     }
 
     // ==================== TWK - TES WAWASAN KEBANGSAAN ====================
