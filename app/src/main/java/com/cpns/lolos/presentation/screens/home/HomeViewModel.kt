@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -26,7 +24,6 @@ data class HomeUiState(
     val twkProgress: Float = 0f,
     val tiuProgress: Float = 0f,
     val tkpProgress: Float = 0f,
-    val daysUntilCpns: Int = 0,
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -56,11 +53,6 @@ class HomeViewModel @Inject constructor(
 
                 // Reset AI queries if new day
                 userRepository.resetAiQueriesIfNeeded()
-
-                // Calculate days until CPNS 2025 (estimated August 2025)
-                val today = LocalDate.now()
-                val cpnsDate = LocalDate.of(2025, 8, 1)
-                val daysRemaining = ChronoUnit.DAYS.between(today, cpnsDate).toInt().coerceAtLeast(0)
 
                 // Combine all flows
                 combine(
@@ -99,7 +91,6 @@ class HomeViewModel @Inject constructor(
                         tkpProgress = if (tkpTotal > 0) {
                             tkpAnswered.toFloat() / tkpTotal
                         } else 0f,
-                        daysUntilCpns = daysRemaining,
                         isLoading = false
                     )
                 }.stateIn(
