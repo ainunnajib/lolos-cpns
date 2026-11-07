@@ -34,7 +34,6 @@ fun HomeScreen(
     val userName = uiState.user?.name ?: "Pengguna"
     val progress = uiState.overallProgress
     val questionsAnswered = uiState.totalQuestionsAnswered
-    val daysRemaining = uiState.daysUntilCpns
 
     LazyColumn(
         modifier = Modifier
@@ -50,18 +49,11 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "Halo, $userName!",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "CPNS 2025 tinggal $daysRemaining hari",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "Halo, $userName!",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
                 IconButton(onClick = { /* TODO: Notifications */ }) {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,

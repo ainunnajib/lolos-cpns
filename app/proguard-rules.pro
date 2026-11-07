@@ -19,6 +19,8 @@
 -dontwarn androidx.room.paging.**
 
 # Hilt
+# Hilt uses each ViewModel class as a distinct map key at startup.
+-keep @dagger.hilt.android.lifecycle.HiltViewModel class * extends androidx.lifecycle.ViewModel
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ComponentSupplier { *; }
